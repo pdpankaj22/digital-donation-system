@@ -177,143 +177,120 @@ donateLinks.forEach(function (link) {
 });
 
 
-// Show selected campaign
+// Show selected campaign & auto-fill logged-in donor info
+const urlParams = new URLSearchParams(window.location.search);
+const selectedCampaign = urlParams.get("campaign") || "Education for Every Child";
+const selectedCategory = urlParams.get("category") || "Education";
 
-const urlParams =
-    new URLSearchParams(window.location.search);
+const campaignTitle = document.getElementById("selectedCampaignTitle");
+const campaignCategory = document.getElementById("selectedCampaignCategory");
 
-const selectedCampaign =
-    urlParams.get("campaign");
-
-const selectedCategory =
-    urlParams.get("category");
-
-const campaignTitle =
-    document.getElementById("selectedCampaignTitle");
-
-const campaignCategory =
-    document.getElementById("selectedCampaignCategory");
-
-if (campaignTitle && selectedCampaign) {
+if (campaignTitle) {
     campaignTitle.textContent = selectedCampaign;
 }
-
-if (campaignCategory && selectedCategory) {
+if (campaignCategory) {
     campaignCategory.textContent = selectedCategory;
 }
 
+// Auto-fill donor name and email if logged in
+const donorNameInput = document.getElementById("donorName");
+const donorEmailInput = document.getElementById("donorEmail");
+const storedUserJson = localStorage.getItem("kindfundUser");
+if (storedUserJson) {
+    try {
+        const u = JSON.parse(storedUserJson);
+        if (donorNameInput && !donorNameInput.value) {
+            donorNameInput.value = u.fullName || "";
+        }
+        if (donorEmailInput && !donorEmailInput.value) {
+            donorEmailInput.value = u.email || "";
+        }
+    } catch (e) {}
+}
 
 // ================= DONATION FORM =================
-
-const donationForm =
-    document.getElementById("donationForm");
+const donationForm = document.getElementById("donationForm");
 
 if (donationForm) {
-
     donationForm.addEventListener("submit", async function (event) {
-
         event.preventDefault();
 
-        const donationAmount =
-            document.getElementById("donationAmount");
+        const donationAmount = document.getElementById("donationAmount");
+        const paymentMethod = document.getElementById("paymentMethod");
+        const donorNameField = document.getElementById("donorName");
+        const donorEmailField = document.getElementById("donorEmail");
 
-        const paymentMethod =
-            document.getElementById("paymentMethod");
-
-        const amount = donationAmount
-            ? Number(donationAmount.value)
-            : 0;
-
+        const amount = donationAmount ? Number(donationAmount.value) : 0;
         if (amount <= 0) {
-
             alert("Please enter a valid donation amount.");
             return;
-
         }
 
         if (!paymentMethod || paymentMethod.value === "") {
-
             alert("Please select a payment method.");
             return;
-
         }
 
-        const urlParams =
-            new URLSearchParams(window.location.search);
+        const urlParams = new URLSearchParams(window.location.search);
+        const campaignName = urlParams.get("campaign") || (campaignTitle ? campaignTitle.textContent.trim() : "Education for Every Child");
+        const category = urlParams.get("category") || (campaignCategory ? campaignCategory.textContent.trim() : "Education");
 
-        const campaignName =
-            urlParams.get("campaign") ||
-            "KindFund Campaign";
-
-        const category =
-            urlParams.get("category") ||
-            "General";
-
-
-        // Logged-in user
-
-        const storedUser =
-            localStorage.getItem("kindfundUser");
-
-        if (!storedUser) {
-
-            alert("Please login before making a donation.");
-
-            window.location.href = "login.html";
-
-            return;
-
+        let user = null;
+        const storedUser = localStorage.getItem("kindfundUser");
+        if (storedUser) {
+            try { user = JSON.parse(storedUser); } catch(e) {}
         }
 
-        const user =
-            JSON.parse(storedUser);
+        const donorName = (donorNameField && donorNameField.value.trim()) || (user && user.fullName) || "Donor";
+        const donorEmail = (donorEmailField && donorEmailField.value.trim().toLowerCase()) || (user && user.email ? user.email.trim().toLowerCase() : "donor@kindfund.org");
 
+        if (!user) {
+            user = {
+                fullName: donorName,
+                email: donorEmail,
+                role: "DONOR"
+            };
+            localStorage.setItem("kindfundLoggedIn", "true");
+            localStorage.setItem("kindfundUser", JSON.stringify(user));
+        } else {
+            user.fullName = user.fullName || donorName;
+            user.email = user.email || donorEmail;
+            localStorage.setItem("kindfundUser", JSON.stringify(user));
+        }
+
+        const newDonation = {
+            donorEmail: donorEmail,
+            donorName: donorName,
+            campaignName: campaignName,
+            category: category,
+            amount: amount,
+            paymentMethod: paymentMethod.value,
+            status: "SUCCESSFUL"
+        };
 
         try {
             const fetchFn = window.fetchWithTimeout || fetch;
-            const response = await fetchFn(
+            await fetchFn(
                 (window.API_BASE_URL || "http://localhost:8080") + "/api/donations",
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        donorEmail: user.email,
-                        campaignName: campaignName,
-                        category: category,
-                        amount: amount,
-                        paymentMethod: paymentMethod.value,
-                        status: "SUCCESSFUL"
-                    })
+                    body: JSON.stringify(newDonation)
                 },
-                2500
+                2000
             );
-
-            if (!response.ok) {
-                const responseText = await response.text();
-                console.warn("Backend donation returned non-OK:", responseText);
-            }
         } catch (error) {
             console.warn("Backend unavailable, saving donation locally:", error);
         }
 
         if (window.saveStoredDonation) {
-            window.saveStoredDonation({
-                donorEmail: user.email,
-                campaignName: campaignName,
-                category: category,
-                amount: amount,
-                paymentMethod: paymentMethod.value,
-                status: "SUCCESSFUL"
-            });
+            window.saveStoredDonation(newDonation);
         }
 
-        alert("Donation successful! Thank you for supporting this cause ❤️");
+        alert("Donation of ₹" + amount.toLocaleString("en-IN") + " successful! Thank you for your support ❤️");
         window.location.href = "dashboard.html";
-
     });
-
 }
-
 
 // ================= LOGIN =================
 
