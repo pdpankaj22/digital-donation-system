@@ -2,9 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/Kindfund-Frontend/$1"
-    }
+    { "source": "/", "destination": "/Kindfund-Frontend/index.html" },
+    { "source": "/css/(.*)", "destination": "/Kindfund-Frontend/css/$1" },
+    { "source": "/js/(.*)", "destination": "/Kindfund-Frontend/js/$1" },
+    { "source": "/images/(.*)", "destination": "/Kindfund-Frontend/images/$1" },
+    { "source": "/:page.html", "destination": "/Kindfund-Frontend/:page.html" },
+    { "source": "/:page", "destination": "/Kindfund-Frontend/:page.html" },
+    { "source": "/(.*)", "destination": "/Kindfund-Frontend/$1" }
   ]
 }
