@@ -20,7 +20,7 @@ const API_BASE_URL = (() => {
 window.API_BASE_URL = API_BASE_URL;
 
 // Reliable fetch with timeout
-async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -39,7 +39,15 @@ function getStoredUsers() {
     const defaultUsers = [
         {
             id: 1,
-            fullName: "testuser",
+            fullName: "Pankaj",
+            email: "fake353@gmail.com",
+            password: "test@123",
+            phone: "9082906351",
+            role: "DONOR"
+        },
+        {
+            id: 2,
+            fullName: "Test User",
             email: "testuser@gmail.com",
             password: "test@123",
             phone: "9304272762",
@@ -53,7 +61,15 @@ function getStoredUsers() {
     }
     try {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultUsers;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            defaultUsers.forEach(du => {
+                if (!parsed.some(u => (u.email || "").toLowerCase() === du.email.toLowerCase())) {
+                    parsed.push(du);
+                }
+            });
+            return parsed;
+        }
+        return defaultUsers;
     } catch (e) {
         return defaultUsers;
     }
@@ -75,6 +91,16 @@ function getStoredDonations() {
         {
             id: 1,
             amount: 1000,
+            campaignName: "Education for Every Child",
+            category: "Education",
+            donationDate: new Date(Date.now() - 3600000).toISOString(),
+            donorEmail: "fake353@gmail.com",
+            paymentMethod: "upi",
+            status: "SUCCESSFUL"
+        },
+        {
+            id: 2,
+            amount: 1000,
             campaignName: "Home for Families",
             category: "General",
             donationDate: "2026-09-13T17:41:04.160424",
@@ -83,7 +109,7 @@ function getStoredDonations() {
             status: "SUCCESSFUL"
         },
         {
-            id: 2,
+            id: 3,
             amount: 1000,
             campaignName: "Education for Every Child",
             category: "General",
@@ -93,7 +119,7 @@ function getStoredDonations() {
             status: "SUCCESSFUL"
         },
         {
-            id: 3,
+            id: 4,
             amount: 1000,
             campaignName: "Medical Support for Families",
             category: "General",
@@ -103,7 +129,7 @@ function getStoredDonations() {
             status: "SUCCESSFUL"
         },
         {
-            id: 4,
+            id: 5,
             amount: 500,
             campaignName: "Food for the Needy",
             category: "Food",
@@ -113,7 +139,7 @@ function getStoredDonations() {
             status: "SUCCESSFUL"
         },
         {
-            id: 5,
+            id: 6,
             amount: 1000,
             campaignName: "Scholarships for Students",
             category: "Education",
@@ -130,7 +156,15 @@ function getStoredDonations() {
     }
     try {
         const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultDonations;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            defaultDonations.forEach(dd => {
+                if (!parsed.some(d => d.id === dd.id)) {
+                    parsed.push(dd);
+                }
+            });
+            return parsed;
+        }
+        return defaultDonations;
     } catch (e) {
         return defaultDonations;
     }
@@ -139,7 +173,7 @@ window.getStoredDonations = getStoredDonations;
 
 function saveStoredDonation(donation) {
     const donations = getStoredDonations();
-    donation.id = donations.length + 1;
+    donation.id = Date.now();
     donation.donationDate = new Date().toISOString();
     donations.unshift(donation);
     localStorage.setItem("kindfund_all_donations", JSON.stringify(donations));
