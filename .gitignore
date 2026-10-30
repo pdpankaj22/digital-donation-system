@@ -1,0 +1,35 @@
+# Maven build output
+target/
+kindfund-Backend/target/
+*.class
+
+# IDE and Editor Files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.apt_generated
+.springBeans
+.sts4-cache
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Node / Package managers (if any)
+node_modules/
+.npm
+.yarn
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
