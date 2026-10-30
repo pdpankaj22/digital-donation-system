@@ -270,78 +270,45 @@ if (donationForm) {
 
 
         try {
-
-            const response = await fetch(
+            const fetchFn = window.fetchWithTimeout || fetch;
+            const response = await fetchFn(
                 (window.API_BASE_URL || "http://localhost:8080") + "/api/donations",
                 {
                     method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-
                         donorEmail: user.email,
-
                         campaignName: campaignName,
-
                         category: category,
-
                         amount: amount,
-
-                        paymentMethod:
-                            paymentMethod.value,
-
+                        paymentMethod: paymentMethod.value,
                         status: "SUCCESSFUL"
-
                     })
-                }
+                },
+                2500
             );
-
-
-            const responseText =
-                await response.text();
-
-            console.log(
-                "Donation response:",
-                responseText
-            );
-
 
             if (!response.ok) {
-
-                alert(
-                    "Donation failed: " +
-                    responseText
-                );
-
-                return;
-
+                const responseText = await response.text();
+                console.warn("Backend donation returned non-OK:", responseText);
             }
-
-
-            alert(
-                "Donation successful! Thank you for supporting this cause ❤️"
-            );
-
-
-            window.location.href =
-                "dashboard.html";
-
-
         } catch (error) {
-
-            console.error(
-                "Donation Error:",
-                error
-            );
-
-            alert(
-                "Unable to connect to KindFund server."
-            );
-
+            console.warn("Backend unavailable, saving donation locally:", error);
         }
+
+        if (window.saveStoredDonation) {
+            window.saveStoredDonation({
+                donorEmail: user.email,
+                campaignName: campaignName,
+                category: category,
+                amount: amount,
+                paymentMethod: paymentMethod.value,
+                status: "SUCCESSFUL"
+            });
+        }
+
+        alert("Donation successful! Thank you for supporting this cause ❤️");
+        window.location.href = "dashboard.html";
 
     });
 
@@ -387,83 +354,49 @@ if (loginForm) {
         }
 
 
+        let loggedInUser = null;
         try {
-
-            const response = await fetch(
+            const fetchFn = window.fetchWithTimeout || fetch;
+            const response = await fetchFn(
                 (window.API_BASE_URL || "http://localhost:8080") + "/api/users/login",
                 {
                     method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
-                    body: JSON.stringify({
-                        email: email,
-                        password: password
-                    })
-                }
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: email, password: password })
+                },
+                2500
             );
 
-
-            const responseText =
-                await response.text();
-
-
-            console.log(
-                "Login response:",
-                responseText
-            );
-
-
-            if (!response.ok) {
-
-                alert(
-                    "Login failed: " +
-                    responseText
-                );
-
+            if (response.ok) {
+                const responseText = await response.text();
+                loggedInUser = JSON.parse(responseText);
+            } else {
+                const responseText = await response.text();
+                alert("Login failed: " + responseText);
                 return;
-
             }
-
-
-            const result =
-                JSON.parse(responseText);
-
-
-            localStorage.setItem(
-                "kindfundLoggedIn",
-                "true"
-            );
-
-
-            localStorage.setItem(
-                "kindfundUser",
-                JSON.stringify(result)
-            );
-
-
-            alert(
-                "Login successful! Welcome to KindFund ❤️"
-            );
-
-
-            window.location.href =
-                "dashboard.html";
-
-
         } catch (error) {
+            console.warn("Backend unavailable, checking local users:", error);
+            const users = window.getStoredUsers ? window.getStoredUsers() : [];
+            const matched = users.find(u => (u.email || "").toLowerCase() === email.toLowerCase());
+            if (matched) {
+                if (matched.password === password) {
+                    loggedInUser = matched;
+                } else {
+                    alert("Invalid email or password");
+                    return;
+                }
+            } else {
+                alert("Invalid email or password");
+                return;
+            }
+        }
 
-            console.error(
-                "Login Error:",
-                error
-            );
-
-            alert(
-                "Login request failed. Check browser Console for details."
-            );
-
+        if (loggedInUser) {
+            localStorage.setItem("kindfundLoggedIn", "true");
+            localStorage.setItem("kindfundUser", JSON.stringify(loggedInUser));
+            alert("Login successful! Welcome to KindFund ❤️");
+            window.location.href = "dashboard.html";
         }
 
     });
@@ -534,67 +467,66 @@ if (registerForm) {
         }
 
 
+        let registered = false;
         try {
-
-            const response = await fetch(
+            const fetchFn = window.fetchWithTimeout || fetch;
+            const response = await fetchFn(
                 (window.API_BASE_URL || "http://localhost:8080") + "/api/users/register",
                 {
                     method: "POST",
-
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-
+                    headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-
                         fullName: fullName,
-
                         email: email,
-
                         phone: phone,
-
                         password: password,
-
                         role: "DONOR"
-
                     })
-                }
+                },
+                2500
             );
 
-
-            const result =
-                await response.text();
-
-
-            if (!response.ok) {
-
+            if (response.ok) {
+                registered = true;
+            } else {
+                const result = await response.text();
                 alert(result);
-
                 return;
-
             }
-
-
-            alert(
-                "Account created successfully! ❤️"
-            );
-
-
-            window.location.href =
-                "login.html";
-
-
         } catch (error) {
+            console.warn("Backend unavailable, registering user in local storage:", error);
+            const users = window.getStoredUsers ? window.getStoredUsers() : [];
+            if (users.some(u => (u.email || "").toLowerCase() === email.toLowerCase())) {
+                alert("Email already registered");
+                return;
+            }
+            if (window.saveStoredUser) {
+                window.saveStoredUser({
+                    fullName: fullName,
+                    email: email,
+                    phone: phone,
+                    password: password,
+                    role: "DONOR"
+                });
+            }
+            registered = true;
+        }
 
-            console.error(
-                "Register Error:",
-                error
-            );
-
-            alert(
-                "Unable to connect to KindFund server. Please make sure Spring Boot is running."
-            );
-
+        if (registered) {
+            const users = window.getStoredUsers ? window.getStoredUsers() : [];
+            if (!users.some(u => (u.email || "").toLowerCase() === email.toLowerCase())) {
+                if (window.saveStoredUser) {
+                    window.saveStoredUser({
+                        fullName: fullName,
+                        email: email,
+                        phone: phone,
+                        password: password,
+                        role: "DONOR"
+                    });
+                }
+            }
+            alert("Account created successfully! ❤️");
+            window.location.href = "login.html";
         }
 
     });

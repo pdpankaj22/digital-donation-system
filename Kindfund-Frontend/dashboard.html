@@ -408,49 +408,29 @@
         }
 
 
+        let donations = [];
         try {
-
-
-            // -----------------------------
-            // GET DONATIONS FROM BACKEND
-            // -----------------------------
-
-            const response = await fetch(
-
+            const fetchFn = window.fetchWithTimeout || fetch;
+            const response = await fetchFn(
                 (window.API_BASE_URL || "http://localhost:8080") + "/api/donations/donor/" +
-                encodeURIComponent(user.email)
-
+                encodeURIComponent(user.email),
+                {},
+                2500
             );
 
-
-            const responseText =
-                await response.text();
-
-
-            console.log(
-                "Dashboard response:",
-                responseText
-            );
-
-
-            if (!response.ok) {
-
-                throw new Error(
-                    "Server returned status " +
-                    response.status
-                );
-
+            if (response.ok) {
+                const responseText = await response.text();
+                donations = JSON.parse(responseText);
+            } else {
+                throw new Error("Server returned status " + response.status);
             }
+        } catch (error) {
+            console.warn("Backend unavailable, loading local donations:", error);
+            const allDonations = window.getStoredDonations ? window.getStoredDonations() : [];
+            donations = allDonations.filter(d => (d.donorEmail || "").toLowerCase() === (user.email || "").toLowerCase());
+        }
 
-
-            const donations =
-                JSON.parse(responseText);
-
-
-            console.log(
-                "Donations:",
-                donations
-            );
+        console.log("Donations:", donations);
 
 
             // -----------------------------
